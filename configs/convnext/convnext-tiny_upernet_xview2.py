@@ -25,7 +25,7 @@ test_pipeline = [
     dict(type='PackSegInputs')
 ]
 train_dataloader = dict(
-    batch_size=2,  # Small for CPU testing; increase to 4–8 on Colab GPU
+    batch_size=4,  # Small for CPU testing; increase to 4–8 on Colab GPU
     num_workers=2,
     persistent_workers=True,
     sampler=dict(type='InfiniteSampler', shuffle=True),
@@ -66,14 +66,19 @@ model = dict(
 
 # Optimizer and schedule
 optim_wrapper = dict(
-    _delete_=True,  # Override any base config optimizer
-    type='OptimWrapper',  # CPU-compatible
+    _delete_=True,
+    type='AmpOptimWrapper',
     optimizer=dict(
-        type='AdamW',
-        lr=6e-4,
-        betas=(0.9, 0.999),
-        weight_decay=0.01)
-)
+        type='AdamW', lr=0.0001, betas=(0.9, 0.999), weight_decay=0.05),
+    paramwise_cfg={
+        'decay_rate': 0.9,
+        'decay_type': 'stage_wise',
+        'num_layers': 6
+    },
+    constructor='LearningRateDecayOptimizerConstructor',
+    loss_scale='dynamic')
+
+
 param_scheduler = [
     dict(type='LinearLR', start_factor=1e-6, by_epoch=False, begin=0, end=1500),
     dict(type='PolyLR', power=1.0, begin=1500, end=40000, eta_min=0.0, by_epoch=False)
