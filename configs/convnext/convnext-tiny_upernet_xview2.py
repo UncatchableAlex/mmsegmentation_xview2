@@ -7,7 +7,7 @@ _base_ = [
 
 # Dataset settings
 dataset_type = 'CustomDataset'
-data_root = 'C:\\Users\\alexm\\2025_fall\\ATIA\\geotiffs\\hold\\dataset'  # e.g., '/home/user/dataset' or '/content/drive/MyDrive/xview2/dataset'
+data_root = '/content/dataset'  # e.g., '/home/user/dataset' or '/content/drive/MyDrive/xview2/dataset'
 crop_size = (512, 512)
 train_pipeline = [
     dict(type='LoadImageFromFile'),
@@ -25,7 +25,7 @@ test_pipeline = [
     dict(type='PackSegInputs')
 ]
 train_dataloader = dict(
-    batch_size=4,  # Small for CPU testing; increase to 4–8 on Colab GPU
+    batch_size=16,  # Small for CPU testing; increase to 4–8 on Colab GPU
     num_workers=2,
     persistent_workers=True,
     sampler=dict(type='InfiniteSampler', shuffle=True),
@@ -46,6 +46,20 @@ val_dataloader = dict(
         data_prefix=dict(img_path='images_val', seg_map_path='masks_val'),
         pipeline=test_pipeline)
 )
+vis_backends = [
+    dict(type='LocalVisBackend'),
+    dict(type='WandbVisBackend',
+         init_kwargs=dict(
+             project='xview2-segmentation',
+             name='convnext-tiny-experiment',
+         ))
+]
+visualizer = dict(
+    type='SegLocalVisualizer',
+    vis_backends=vis_backends,
+    name='visualizer'
+)
+
 test_dataloader = val_dataloader
 val_evaluator = dict(type='IoUMetric', iou_metrics=['mIoU'])
 test_evaluator = val_evaluator
@@ -69,7 +83,7 @@ optim_wrapper = dict(
     _delete_=True,
     type='AmpOptimWrapper',
     optimizer=dict(
-        type='AdamW', lr=0.0001, betas=(0.9, 0.999), weight_decay=0.05),
+        type='AdamW', lr=0.0012, betas=(0.9, 0.999), weight_decay=0.05),
     paramwise_cfg={
         'decay_rate': 0.9,
         'decay_type': 'stage_wise',
@@ -84,8 +98,26 @@ param_scheduler = [
     dict(type='PolyLR', power=1.0, begin=1500, end=40000, eta_min=0.0, by_epoch=False)
 ]
 
+default_hooks = dict(
+    checkpoint=dict(
+        type='CheckpointHook',
+        interval=1,        # Save every epoch
+        max_keep_ckpts=3,  # Keep last 3 checkpoints
+    )
+)
+
+custom_hooks=[
+    dict(
+        type='EarlyStoppingHook',
+        monitor='val_mIoU',
+        min_delta=0.001,
+        patience=8,  # Stop after 8 evaluations (~40k iterations)
+        verbose=True
+    )
+]
+
 # Training settings
-runner = dict(type='IterBasedRunner', max_iters=4000)  # ~5 epochs for 720 images, CPU test
+runner = dict(type='IterBasedRunner', max_iters=80000)
 checkpoint_config = dict(by_epoch=False, interval=1000)
-evaluation = dict(interval=1000, metric='mIoU')
+evaluation = dict(interval=4000, metric='mIoU')
 env_cfg = dict(seed=42, deterministic=True)
