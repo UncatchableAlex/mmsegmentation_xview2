@@ -7,7 +7,7 @@ _base_ = [
 
 # Dataset settings
 dataset_type = 'CustomDataset'
-data_root = '/content/dataset'  # e.g., '/home/user/dataset' or '/content/drive/MyDrive/xview2/dataset'
+data_root = '/root/mmsegmentation_xview2/dataset'  # e.g., '/home/user/dataset' or '/content/drive/MyDrive/xview2/dataset'
 crop_size = (512, 512)
 train_pipeline = [
     dict(type='LoadImageFromFile'),
@@ -112,7 +112,7 @@ custom_hooks=[
         monitor='val_mIoU',
         min_delta=0.001,
         patience=8,  # Stop after 8 evaluations (~40k iterations)
-        verbose=True
+       # verbose=True
     )
 ]
 
