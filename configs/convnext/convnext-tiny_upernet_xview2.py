@@ -7,7 +7,7 @@ _base_ = [
 
 # Dataset settings
 dataset_type = 'CustomDataset'
-data_root = '/root/mmsegmentation_xview2/dataset'  # e.g., '/home/user/dataset' or '/content/drive/MyDrive/xview2/dataset'
+data_root = '/workspace/mmsegmentation_xview2/dataset'  # e.g., '/home/user/dataset' or '/content/drive/MyDrive/xview2/dataset'
 crop_size = (512, 512)
 train_pipeline = [
     dict(type='LoadImageFromFile'),
