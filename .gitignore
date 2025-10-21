@@ -115,6 +115,9 @@ data
 *.log.json
 work_dirs/
 mmseg/.mim
+dataset/
+dataset_tiny/
+client_secrets.json
 
 # Pytorch
 *.pth

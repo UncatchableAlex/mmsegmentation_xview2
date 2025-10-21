@@ -1,51 +1,17 @@
-custom_imports = dict(imports=['mmseg.datasets.xview2'], allow_failed_imports=False)
+custom_imports = dict(
+    imports=['mmseg.datasets.xview2'],
+    allow_failed_imports=False
+)
 _base_ = [
     '../_base_/models/upernet_convnext.py',  # UPerNet + ConvNeXt backbone
     '../_base_/default_runtime.py',  # Logging, checkpoints
-    '../_base_/schedules/schedule_160k.py'  # Optimizer, LR schedule
+    '../_base_/schedules/schedule_40k.py',  # Optimizer, LR schedule
+    '../_base_/datasets/xview2.py' 
 ]
 
 # Dataset settings
-dataset_type = 'CustomDataset'
-data_root = '/workspace/mmsegmentation_xview2/dataset'  # e.g., '/home/user/dataset' or '/content/drive/MyDrive/xview2/dataset'
-crop_size = (512, 512)
-train_pipeline = [
-    dict(type='LoadImageFromFile'),
-    dict(type='LoadAnnotations'),
-    dict(type='RandomResize', scale=(512, 512), ratio_range=(0.5, 2.0), keep_ratio=True),
-    dict(type='RandomCrop', crop_size=crop_size, cat_max_ratio=0.75),
-    dict(type='RandomFlip', prob=0.5),
-    dict(type='PhotoMetricDistortion'),
-    dict(type='PackSegInputs')
-]
-test_pipeline = [
-    dict(type='LoadImageFromFile'),
-    dict(type='Resize', scale=(512, 512), keep_ratio=True),
-    dict(type='LoadAnnotations'),
-    dict(type='PackSegInputs')
-]
-train_dataloader = dict(
-    batch_size=16,  # Small for CPU testing; increase to 4–8 on Colab GPU
-    num_workers=2,
-    persistent_workers=True,
-    sampler=dict(type='InfiniteSampler', shuffle=True),
-    dataset=dict(
-        type=dataset_type,
-        data_root=data_root,
-        data_prefix=dict(img_path='images', seg_map_path='masks'),
-        pipeline=train_pipeline)
-)
-val_dataloader = dict(
-    batch_size=1,
-    num_workers=2,
-    persistent_workers=True,
-    sampler=dict(type='DefaultSampler', shuffle=False),
-    dataset=dict(
-        type=dataset_type,
-        data_root=data_root,
-        data_prefix=dict(img_path='images_val', seg_map_path='masks_val'),
-        pipeline=test_pipeline)
-)
+work_dir = '/workspace/mmsegmentation_xview2/work_dirs/baseline2'
+
 vis_backends = [
     dict(type='LocalVisBackend'),
     dict(type='WandbVisBackend',
@@ -56,25 +22,45 @@ vis_backends = [
 ]
 visualizer = dict(
     type='SegLocalVisualizer',
-    vis_backends=vis_backends,
+    vis_backends=[
+        dict(type='LocalVisBackend'),
+        dict(type='WandbVisBackend',
+             init_kwargs=dict(
+                 project='xview2-segmentation',
+                 name='convnext-tiny-experiment',
+                 tags=['binary', 'convnext', 'xview2']
+             ))
+    ],
     name='visualizer'
 )
 
-test_dataloader = val_dataloader
-val_evaluator = dict(type='IoUMetric', iou_metrics=['mIoU'])
-test_evaluator = val_evaluator
-
 # Model settings
+crop_size = (512, 512)
 data_preprocessor = dict(size=crop_size)
 model = dict(
     data_preprocessor=data_preprocessor,
     backbone=dict(
         type='mmpretrain.ConvNeXt',
         arch='tiny',
-        drop_path_rate=0.1,
+        # drop_path_rate randomly drops residual connections during training to regularize
+        drop_path_rate=0.1, # we want this to be lower because we are training from scratch
         init_cfg=None),  # From scratch
-    decode_head=dict(in_channels=[96, 192, 384, 768], num_classes=2),  # Binary
-    auxiliary_head=dict(in_channels=384, num_classes=2),
+    decode_head=dict(
+        in_channels=[96, 192, 384, 768],
+        num_classes=2,
+        loss_decode=dict(
+            type='DiceLoss',
+            use_sigmoid=False  # Use softmax for 2 classes
+        )
+    ),
+    auxiliary_head=dict(
+        in_channels=384,
+        num_classes=2,
+        loss_decode=dict(
+            type='DiceLoss',
+            use_sigmoid=False  # Use softmax for 2 classes
+        )
+    ),
     test_cfg=dict(mode='whole')  # Simpler for 512x512, no sliding window
 )
 
@@ -101,23 +87,58 @@ param_scheduler = [
 default_hooks = dict(
     checkpoint=dict(
         type='CheckpointHook',
-        interval=1,        # Save every epoch
-        max_keep_ckpts=3,  # Keep last 3 checkpoints
+        interval=1000,
+        max_keep_ckpts=3,
+        by_epoch=False,
+        save_best='mDice',   # automatically saves best model based on validation mDice
+        rule='greater'      # larger mDice = better
     )
 )
+cfg_dict = {
+    "model": "UPerNet + ConvNeXt tiny",
+    "num_classes": 2,
+    "batch_size": 16,
+    "crop_size": crop_size,
+    "optimizer": "AdamW",
+    "lr": 0.0012,
+    "max_iters": 40000,
+    "dataset": "xview2",
+    "work_dir": work_dir
+}
 
-custom_hooks=[
+log_config = dict(  # config to register logger hook
+    interval=50,  # Interval to print the log
+    hooks=[
+        dict(type='TextLoggerHook', by_epoch=False),
+      #  dict(type='TensorboardLoggerHook', by_epoch=False),
+        dict(type='MMSegWandbHook', 
+             by_epoch=False, # The Wandb logger is also supported, It requires `wandb` to be installed.
+             interval=200,
+             init_kwargs={'entity': "alex-meislich-k-benhavns-universitet", # The entity used to log on Wandb
+                          'project': "xview2-segmentation", # Project name in WandB
+                          'config': cfg_dict}), # Check https://docs.wandb.ai/ref/python/init for more init arguments.
+        # MMSegWandbHook is mmseg implementation of WandbLoggerHook. ClearMLLoggerHook, DvcliveLoggerHook, MlflowLoggerHook, NeptuneLoggerHook, PaviLoggerHook, SegmindLoggerHook are also supported based on MMCV implementation.
+    ])
+
+
+custom_hooks = [
     dict(
         type='EarlyStoppingHook',
-        monitor='val_mIoU',
+        monitor='mDice',
         min_delta=0.001,
-        patience=8,  # Stop after 8 evaluations (~40k iterations)
+        patience=5,  # Stop after 5 evaluations
        # verbose=True
     )
 ]
 
 # Training settings
-runner = dict(type='IterBasedRunner', max_iters=80000)
-checkpoint_config = dict(by_epoch=False, interval=1000)
-evaluation = dict(interval=4000, metric='mIoU')
+train_cfg = dict(val_interval=2000)
+
+# make our environment deterministic for research purposes
 env_cfg = dict(seed=42, deterministic=True)
+
+
+# test with:
+# export PYTHONPATH=$(pwd):$PYTHONPATH
+# python3 tools/test.py configs/convnext/convnext-tiny_upernet_xview2.py work_dirs/baseline2/best_mIoU_iter_38000.pth  --show-dir work_dirs/check_preds_baseline2
+# python3 tools/analysis_tools/confusion_matrix.py configs/convnext/convnext-tiny_upernet_xview2.py  work_dirs/baseline2/pred_results.pkl work_dirs/baseline2/confusion_matrix --show
