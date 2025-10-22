@@ -9,9 +9,11 @@ import torch.utils.checkpoint as cp
 from mmcv.cnn.bricks import DropPath
 from mmengine.model import BaseModule, ModuleList, Sequential
 
-from mmpretrain.registry import MODELS
-from ..utils import GRN, build_norm_layer
-from .base_backbone import BaseBackbone
+from mmseg.registry import MODELS
+from mmpretrain.models.utils.norm import build_norm_layer, GRN
+from mmpretrain.models.backbones.base_backbone import BaseBackbone
+# from ..utils import GRN, build_norm_layer
+# from .base_backbone import BaseBackbone
 
 
 class ConvNeXtBlock(BaseModule):
@@ -127,7 +129,7 @@ class ConvNeXtBlock(BaseModule):
 
 
 @MODELS.register_module()
-class ConvNeXt(BaseBackbone):
+class ConvNeXt_Ablation(BaseBackbone):
     """ConvNeXt v1&v2 backbone.
 
     A PyTorch implementation of `A ConvNet for the 2020s
@@ -222,7 +224,7 @@ class ConvNeXt(BaseBackbone):
     def __init__(self,
                  arch='tiny',
                  in_channels=3,
-                 stem_patch_size=4,
+                 stem_patch_size=7,
                  norm_cfg=dict(type='LN2d', eps=1e-6),
                  act_cfg=dict(type='GELU'),
                  linear_pw_conv=True,
@@ -293,7 +295,7 @@ class ConvNeXt(BaseBackbone):
                 in_channels,
                 self.channels[0],
                 kernel_size=stem_patch_size,
-                stride=stem_patch_size),
+                stride=2),
             build_norm_layer(norm_cfg, self.channels[0]),
         )
         self.downsample_layers.append(stem)
@@ -364,7 +366,7 @@ class ConvNeXt(BaseBackbone):
                 param.requires_grad = False
 
     def train(self, mode=True):
-        super(ConvNeXt, self).train(mode)
+        super(ConvNeXt_Ablation, self).train(mode)
         self._freeze_stages()
 
     def get_layer_depth(self, param_name: str, prefix: str = ''):

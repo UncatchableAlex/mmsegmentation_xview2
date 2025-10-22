@@ -10,7 +10,7 @@ _base_ = [
 ]
 
 # Dataset settings
-work_dir = '/workspace/mmsegmentation_xview2/work_dirs/baseline3'
+work_dir = '/workspace/mmsegmentation_xview2/work_dirs/ablation1'
 
 vis_backends = [
     dict(type='LocalVisBackend'),
@@ -40,7 +40,7 @@ data_preprocessor = dict(size=crop_size)
 model = dict(
     data_preprocessor=data_preprocessor,
     backbone=dict(
-        type='mmpretrain.ConvNeXt',
+        type='ConvNeXt_Ablation',
         arch='tiny',
         # drop_path_rate randomly drops residual connections during training to regularize
         drop_path_rate=0.1, # we want this to be lower because we are training from scratch
@@ -70,6 +70,7 @@ optim_wrapper = dict(
     type='AmpOptimWrapper',
     optimizer=dict(
         type='AdamW', lr=0.0012, betas=(0.9, 0.999), weight_decay=0.05),
+    accumulative_counts=4, # we can't use a batch_size=16 like we did with the 4x4 stem. We will compensate by accumulating gradients. 4x4 = 16x1 = 16
     paramwise_cfg={
         'decay_rate': 0.9,
         'decay_type': 'stage_wise',
@@ -119,10 +120,6 @@ log_config = dict(  # config to register logger hook
                           'config': cfg_dict}), # Check https://docs.wandb.ai/ref/python/init for more init arguments.
         # MMSegWandbHook is mmseg implementation of WandbLoggerHook. ClearMLLoggerHook, DvcliveLoggerHook, MlflowLoggerHook, NeptuneLoggerHook, PaviLoggerHook, SegmindLoggerHook are also supported based on MMCV implementation.
     ])
-# default_hooks = dict(
-#     logger=dict(type='LoggerHook', interval=1)  # Log every 10 iterations instead of 50
-# )
-
 
 
 custom_hooks = [
@@ -141,8 +138,11 @@ train_cfg = dict(val_interval=2000)
 # make our environment deterministic for research purposes
 env_cfg = dict(seed=42, deterministic=True)
 
+train_dataloader = dict(batch_size=4) # prevent an OOM
+
 
 # test with:
 # export PYTHONPATH=$(pwd):$PYTHONPATH
+# python3 tools/train.py configs/convnext/convnext-tiny-ablation_upernet_xview2.py
 # python3 tools/test.py configs/convnext/convnext-tiny_upernet_xview2.py work_dirs/baseline2/best_mDice_iter_40000.pth  --show-dir work_dirs/check_preds_baseline2
 # python3 tools/analysis_tools/confusion_matrix.py configs/convnext/convnext-tiny_upernet_xview2.py  work_dirs/baseline2/pred_results.pkl work_dirs/baseline2/confusion_matrix --show
