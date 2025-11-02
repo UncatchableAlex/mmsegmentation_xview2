@@ -35,7 +35,7 @@ tta_pipeline = [
 
 
 train_dataloader = dict(
-    batch_size=16,  # optimized for a gpu with 16 gb of memory
+    batch_size=16,
     num_workers=2,
     persistent_workers=True,
     sampler=dict(type='InfiniteSampler', shuffle=True),
@@ -66,6 +66,5 @@ test_dataloader = dict(
         data_prefix=dict(img_path='images_test', seg_map_path='masks_test'),
         pipeline=test_pipeline))
 
-test_dataloader = val_dataloader
 val_evaluator = dict(type='IoUMetric', iou_metrics=['mIoU', 'mDice'])
 test_evaluator = val_evaluator

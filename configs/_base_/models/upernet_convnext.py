@@ -1,6 +1,6 @@
 norm_cfg = dict(type='SyncBN', requires_grad=True)
 custom_imports = dict(imports='mmpretrain.models', allow_failed_imports=False)
-checkpoint_file = 'https://download.openmmlab.com/mmclassification/v0/convnext/downstream/convnext-base_3rdparty_32xb128-noema_in1k_20220301-2a0ee547.pth'  # noqa
+#checkpoint_file = 'https://download.openmmlab.com/mmclassification/v0/convnext/downstream/convnext-base_3rdparty_32xb128-noema_in1k_20220301-2a0ee547.pth'  # noqa
 data_preprocessor = dict(
     type='SegDataPreProcessor',
     mean=[123.675, 116.28, 103.53],
@@ -20,7 +20,7 @@ model = dict(
         layer_scale_init_value=1.0,
         gap_before_final_norm=False,
         init_cfg=dict(
-            type='Pretrained', checkpoint=checkpoint_file,
+            type='Pretrained',# checkpoint=checkpoint_file,
             prefix='backbone.')),
     decode_head=dict(
         type='UPerHead',

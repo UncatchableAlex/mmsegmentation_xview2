@@ -10,7 +10,7 @@ _base_ = [
 ]
 
 # Dataset settings
-work_dir = '/workspace/mmsegmentation_xview2/work_dirs/ablation1'
+work_dir = '/workspace/mmsegmentation_xview2/work_dirs/ablation3'
 
 vis_backends = [
     dict(type='LocalVisBackend'),
@@ -144,5 +144,5 @@ train_dataloader = dict(batch_size=4) # prevent an OOM
 # test with:
 # export PYTHONPATH=$(pwd):$PYTHONPATH
 # python3 tools/train.py configs/convnext/convnext-tiny-ablation_upernet_xview2.py
-# python3 tools/test.py configs/convnext/convnext-tiny_upernet_xview2.py work_dirs/baseline2/best_mDice_iter_40000.pth  --show-dir work_dirs/check_preds_baseline2
+# python3 tools/test.py configs/convnext/convnext-tiny-ablation_upernet_xview2.py work_dirs/ablation4/best_mDice_iter_40000.pth --show-dir work_dirs/check_preds_ablation4
 # python3 tools/analysis_tools/confusion_matrix.py configs/convnext/convnext-tiny_upernet_xview2.py  work_dirs/baseline2/pred_results.pkl work_dirs/baseline2/confusion_matrix --show

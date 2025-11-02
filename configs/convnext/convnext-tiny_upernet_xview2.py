@@ -10,7 +10,7 @@ _base_ = [
 ]
 
 # Dataset settings
-work_dir = '/workspace/mmsegmentation_xview2/work_dirs/baseline3'
+work_dir = '/workspace/mmsegmentation_xview2/work_dirs/baseline7'
 
 vis_backends = [
     dict(type='LocalVisBackend'),
@@ -70,6 +70,7 @@ optim_wrapper = dict(
     type='AmpOptimWrapper',
     optimizer=dict(
         type='AdamW', lr=0.0012, betas=(0.9, 0.999), weight_decay=0.05),
+    #accumulative_counts=4,
     paramwise_cfg={
         'decay_rate': 0.9,
         'decay_type': 'stage_wise',
@@ -141,8 +142,10 @@ train_cfg = dict(val_interval=2000)
 # make our environment deterministic for research purposes
 env_cfg = dict(seed=42, deterministic=True)
 
+#train_dataloader = dict(batch_size=4) # align with ablation version
 
 # test with:
 # export PYTHONPATH=$(pwd):$PYTHONPATH
-# python3 tools/test.py configs/convnext/convnext-tiny_upernet_xview2.py work_dirs/baseline2/best_mDice_iter_40000.pth  --show-dir work_dirs/check_preds_baseline2
+# python3 tools/train.py configs/convnext/convnext-tiny_upernet_xview2.py
+# python3 tools/test.py configs/convnext/convnext-tiny_upernet_xview2.py work_dirs/baseline6/best_mDice_iter_38000.pth  --show-dir work_dirs/check_preds_baseline1
 # python3 tools/analysis_tools/confusion_matrix.py configs/convnext/convnext-tiny_upernet_xview2.py  work_dirs/baseline2/pred_results.pkl work_dirs/baseline2/confusion_matrix --show

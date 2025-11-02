@@ -122,3 +122,16 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+# 4x4 stride 4 stem:
+# Compute type: direct: randomly generate a picture
+# Input shape: (512, 512)
+# Flops: 0.234T
+# Params: 59.243M
+
+# 7x7 stride 2 stem
+# Compute type: direct: randomly generate a picture
+# Input shape: (512, 512)
+# Flops: 0.912T
+# Params: 59.252M
